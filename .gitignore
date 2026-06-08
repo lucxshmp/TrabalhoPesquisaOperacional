@@ -1,0 +1,27 @@
+# Arquivos auxiliares do LaTeX
+*.aux
+*.bbl
+*.blg
+*.brf
+*.fls
+*.fdb_latexmk
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lot
+*.out
+*.toc
+*.synctex.gz
+*.xdv
+
+# Arquivos gerados por editores (Texmaker, VS Code, etc)
+*.nav
+*.snm
+*.vrb
+*.bcf
+*.run.xml
+
+# Opcional: Ignorar o PDF final gerado (descomente se desejar)
+# *.pdf
