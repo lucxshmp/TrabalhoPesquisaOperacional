@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+BCP/data/geocoding_cache.json
+~$*.xlsx
+DOCUMENTACAO.md
