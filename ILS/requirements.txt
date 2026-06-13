@@ -1,0 +1,7 @@
+numpy
+matplotlib
+pandas
+openpyxl
+requests
+geopy
+# gurobipy  # necessário apenas para compare_bcp.py (requer licença Gurobi)

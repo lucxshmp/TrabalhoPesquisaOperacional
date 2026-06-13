@@ -1,5 +1,7 @@
-#Implementar funções de leitura das exportações do sistema da Stellantis 
+#Implementar funções de leitura das exportações do sistema da Stellantis
+import json
 import math
+import os
 import requests
 from geopy.geocoders import Nominatim
 import pandas as pd
@@ -10,12 +12,32 @@ from data.structures import Concessionaria, Pedido, Node, Instance
 
 #  1. obter lat. e long a partir do cep
 
+CACHE_PATH = os.path.join(os.path.dirname(__file__), "geocoding_cache.json")
+
+
+def _load_cache():
+    if os.path.exists(CACHE_PATH):
+        with open(CACHE_PATH, "r") as f:
+            return json.load(f)
+    return {}
+
+
+def _save_cache(cache):
+    with open(CACHE_PATH, "w") as f:
+        json.dump(cache, f, indent=2)
+
 
 def obter_coordenadas_por_cep(cep):
     cep_limpo = ''.join(filter(str.isdigit, str(cep)))
 
     if len(cep_limpo) != 8:
         return None
+
+    cache = _load_cache()
+
+    if cep_limpo in cache:
+        print(f"CEP {cep_limpo}: coordenadas obtidas do cache")
+        return tuple(cache[cep_limpo])
 
     url_brasil_api = f"https://brasilapi.com.br/api/cep/v1/{cep_limpo}"
 
@@ -38,7 +60,11 @@ def obter_coordenadas_por_cep(cep):
         localizacao = geolocator.geocode(endereco_completo)
 
         if localizacao:
-            return localizacao.latitude, localizacao.longitude
+            coords = (localizacao.latitude, localizacao.longitude)
+            cache[cep_limpo] = list(coords)
+            _save_cache(cache)
+            print(f"CEP {cep_limpo}: coordenadas obtidas da API e salvas no cache")
+            return coords
 
     except Exception:
         return None
