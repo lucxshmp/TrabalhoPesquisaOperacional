@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(BCP_DIR))
 import numpy as np
 from instance_reader import load_instance
 from solution import Solution
+from construction import seed_routes
 
 ILS_DIR = os.path.dirname(__file__)
 DEFAULT_DADOS  = os.path.join(ILS_DIR, "datasets", "dadosPO.xlsx")
@@ -90,8 +91,17 @@ def main():
         for e in errors:
             print(f"  {e}")
 
-    print("\n[T1.1 concluída] solution.py e main.py prontos.")
-    print("Próxima etapa: construction.py (T1.2)")
+    # T2.1 — semeadura por maior demanda
+    print("\n--- T2.1: semeadura por maior demanda ---")
+    routes_seed, pending = seed_routes(instance)
+    seeds = [r[0] for r in routes_seed]
+    seed_demands = [instance.nodes[v].demanda for v in seeds]
+    assert len(set(seeds)) == len(seeds), "clientes repetidos nas sementes!"
+    assert all(v not in seeds for v in pending), "pendente aparece como semente!"
+    print(f"Rotas semeadas   : {len(routes_seed)}  (K={instance.K})")
+    print(f"Clientes pending : {len(pending)}")
+    print(f"Demandas sementes: {seed_demands[:5]}{'...' if len(seed_demands) > 5 else ''}")
+    print("Semeadura OK [DoD T2.1 verificado]")
 
 
 if __name__ == "__main__":
