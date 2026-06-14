@@ -10,13 +10,17 @@ from data.instance_reader import obter_coordenadas_por_cep, haversine
 from data.structures import Node, Instance
 
 
-def load_instance(path, depot_lat, depot_lon, Q, Y, K):
+def load_instance(path, depot_lat, depot_lon, Q, Y, K, max_clientes=None):
     """
     Lê dadosPO.xlsx (abas 'concessionárias' e 'pedidos') e constrói a Instance.
 
     Colunas esperadas:
       concessionárias: idcliente | nome concessionaria  | cidade | cep
       pedidos:         id pedido | id cliente | demanda | data
+
+    max_clientes: se informado, limita a instância aos primeiros N pedidos
+                  geocodificáveis (depósito não conta). Útil para reduzir a
+                  escala (ex.: 300, a do artigo) e o tempo do ILS.
     """
     xl = pd.ExcelFile(path)
     df_conc = xl.parse("concessionárias")
@@ -54,6 +58,8 @@ def load_instance(path, depot_lat, depot_lon, Q, Y, K):
 
     i = 1
     for _, ped in df_ped.iterrows():
+        if max_clientes is not None and i > max_clientes:
+            break
         cid = ped["concessionaria_id"]
         if cid not in coordenadas:
             continue

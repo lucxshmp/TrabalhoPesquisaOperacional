@@ -34,16 +34,23 @@ def parse_args():
                         help="Duração máxima da rota em horas (default: 8)")
     parser.add_argument("--K", type=int, default=20,
                         help="Tamanho da frota (default: 20)")
+    parser.add_argument("--max-clientes", type=int, default=300,
+                        help="Limita aos primeiros N clientes (default: 300; use 0 p/ todos)")
     parser.add_argument("--runs", type=int, default=10,
                         help="Número de execuções do ILS (default: 10)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Semente do RNG para reprodutibilidade (default: 42)")
     parser.add_argument("--maxiter", type=int, default=10,
                         help="MaxIter: reinícios do ILS (default: 10)")
+    parser.add_argument("--maxiterils", type=int, default=None,
+                        help="MaxIterILS: iterações do laço interno (default: n + K)")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT,
                         help="Diretório para CSVs e gráficos gerados")
     parser.add_argument("--debug", action="store_true",
                         help="Modo debug: valida deltas incrementais a cada movimento")
+    parser.add_argument("--verify", default="all",
+                        help="Blocos de verificação a rodar: 'all' ou lista separada "
+                             "por vírgula (t12,t31,t32,t33,t41,t42,t43). Ex.: --verify t43")
     return parser.parse_args()
 
 
@@ -67,6 +74,7 @@ def main():
         Q=args.Q,
         Y=args.Y,
         K=args.K,
+        max_clientes=(args.max_clientes or None),  # 0 → None (todos)
     )
 
     # converte matrizes para numpy
@@ -82,6 +90,11 @@ def main():
     print(f"Dimensão cost_matrix : {instance.cost_matrix.shape}")
     print(f"Dimensão time_matrix : {instance.time_matrix.shape}")
 
+    run_verifications(instance, args)
+
+
+def verify_t12(instance, args):
+    """T1.3–T2.x — baseline, semeadura, critérios, estratégias e veículo extra."""
     # Smoke test / T1.3 — baseline ida-e-volta (uma rota por cliente)
     print("\n--- Baseline ida-e-volta (T1.3) ---")
     routes_trivial = [[i] for i in range(1, len(instance.nodes))]
@@ -172,11 +185,37 @@ def main():
     assert not ok_t24, "solução com veículo extra deve ser sinalizada como inválida!"
     print("T2.4 verificado: instância apertada não travou; extras sinalizados")
 
-    verify_t31(instance, args)
-    verify_t32(instance, args)
-    verify_t33(instance, args)
-    verify_t41(instance, args)
-    verify_t42(instance, args)
+
+# Registro ordenado dos blocos de verificação (--verify seleciona quais rodar)
+def _verifications():
+    return {
+        "t12": verify_t12,
+        "t31": verify_t31,
+        "t32": verify_t32,
+        "t33": verify_t33,
+        "t41": verify_t41,
+        "t42": verify_t42,
+        "t43": verify_t43,
+    }
+
+
+def run_verifications(instance, args):
+    """Roda os blocos pedidos em --verify (default: todos, na ordem)."""
+    blocos = _verifications()
+    escolha = (args.verify or "all").strip().lower()
+    if escolha in ("all", "todos", ""):
+        selecionados = list(blocos)
+    else:
+        selecionados = [k.strip() for k in escolha.split(",") if k.strip()]
+        desconhecidos = [k for k in selecionados if k not in blocos]
+        if desconhecidos:
+            raise SystemExit(
+                f"--verify inválido: {desconhecidos}. "
+                f"Opções: {', '.join(blocos)} ou 'all'."
+            )
+    print(f"\n[verify] blocos selecionados: {', '.join(selecionados)}")
+    for k in selecionados:
+        blocos[k](instance, args)
 
 
 def _apply_until_stable(viz, sol, nome):
@@ -354,6 +393,49 @@ def verify_t42(instance, args):
     print(f"  Reparabilidade : perturba e RVND repara → custo={sol.cost:.1f} km "
           f"(ótimo local direto={custo_opt:.1f}) [viável]")
     print("T4.2 verificado: perturbações alteram a solução mantendo viabilidade")
+
+
+def verify_t43(instance, args):
+    """T4.3 — ILS: retorna s* viável, melhor que a construção, com histórico."""
+    print("\n--- T4.3: ILS (Algoritmo 2) ---")
+    from ils import ils
+
+    # custo de referência: melhor construção pura entre algumas tentativas
+    rng_ref = np.random.default_rng(args.seed)
+    custo_constr = min(
+        Solution.from_routes(instance, build_solution(instance, rng_ref)[0]).cost
+        for _ in range(3)
+    )
+
+    # com 300 clientes o ILS roda em ~1 min com params suficientes p/ uma
+    # curva de convergência de verdade (runs do T5 usam --maxiter / n+K)
+    maxiter = max(1, min(args.maxiter, 3))
+    maxiterils = args.maxiterils if args.maxiterils is not None else 20
+    rng = np.random.default_rng(args.seed)
+    print(f"  Config smoke    : maxiter={maxiter}  maxiterils={maxiterils}  seed={args.seed}")
+    best, history = ils(instance, rng, maxiter=maxiter, maxiterils=maxiterils)
+
+    ok, errs = best.validate()
+    assert ok, f"s* do ILS inválida: {errs[0]}"
+    assert best.cost < custo_constr - 1e-9, \
+        f"ILS ({best.cost:.1f}) não melhorou sobre a construção ({custo_constr:.1f})!"
+
+    # histórico populado e monotonicamente não-crescente (melhor global)
+    assert len(history) > 0, "histórico de convergência vazio!"
+    custos = [c for _, c in history]
+    tempos = [tm for tm, _ in history]
+    assert all(custos[i] >= custos[i + 1] - 1e-9 for i in range(len(custos) - 1)), \
+        "custo da melhor global aumentou no histórico!"
+    assert all(tempos[i] <= tempos[i + 1] + 1e-9 for i in range(len(tempos) - 1)), \
+        "tempos do histórico fora de ordem!"
+
+    n_rotas = sum(1 for r in best.routes if r)
+    red = (custo_constr - best.cost) / custo_constr * 100
+    print(f"  Construção pura : {custo_constr:.1f} km")
+    print(f"  ILS (s*)        : {best.cost:.1f} km  (-{red:.1f}%)  rotas {n_rotas}/{instance.K}")
+    print(f"  Histórico       : {len(history)} pontos  "
+          f"({history[0][1]:.1f} -> {history[-1][1]:.1f} km em {history[-1][0]:.1f}s)")
+    print("T4.3 verificado: s* viável, melhora sobre a construção, histórico populado")
 
 
 if __name__ == "__main__":
