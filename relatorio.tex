@@ -12,6 +12,7 @@
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \usepackage{balance}
+
 \begin{document}
 \title{Roteamento de veículos no mercado automobilístico\\[0.5ex]
 \large \textit{Um problema de logística e pesquisa operacional}}
@@ -45,53 +46,65 @@ Class, IEEEtran, \LaTeX, paper, style, template, typesetting.
 \end{IEEEkeywords}
 
 
-\section{Instrodução}
+\section{Introdução}
+A área de logística e distribuição representa uma parcela significativa dos custos operacionais de muitas empresas. 
+Nesse contexto, o Problema de Roteamento de Veículos (PRV) destaca-se como um dos 
+desafios na área de otimização, cujo objetivo é determinar um conjunto de rotas 
+ótimas para uma frota de veículos que deve atender a uma demanda de clientes 
+dispersos geograficamente \cite{livro}. Este trabalho aborta do PRV aplicado ao contexto da MOPAR,
+uma divisão oficial da Stellantis, voltada para venda de peças, acessórios e serviços de pós-venda para as concessionárias
+de todo o Brasil, respeitando a legislação que restringe a venda direta à pessoas físicas\cite{mopar}.
 
-\section{The Design, Intent and \\ Limitations of the Templates}
-
-\section{\LaTeX \ Distributions: Where to Get Them}
-
-\section{Where to get the IEEEtran Templates}
-
-\section{Where to get \LaTeX \ help - user groups}
-
-\section{Document Class Options in IEEEtran}
+O desafio neste trabalho consiste em otimizar a distribuição de peças a partir do armazém central 
+localizado em Betim-MG, para uma rede de mais de três mil concessionárias em Belo Horizonte. O objetivo é formular este
+cenário matematicamente e propor uma resolução computacional que otimize as rotas da frota utilizando o pacote computacional Gurobi aplicado a meta-heurísticas que conduzem à resolução do problema, 
+garantindo assim o atendimento da demanda com o menor custo de transporte possível.
 
 
+\section{Revisão da literatura}
 
-\section{How to Create Common Front Matter}
 
-\subsection{Author Names and Affiliations}
+O PRV é considerado um problema NP-difícil e foi introduzido na literatura por Dantzig \& Ramser em 1959,
+quando apresentaram a aplicação real do roteamento de uma frota de caminhões de entrega de gasolina entre um terminal de distribuição e vários 
+postos de serviço abastecidos por esse terminal\cite{kumar2015}.
 
-\subsection{Running Heads}
+quando apresentaram a aplicação real na distribuição de gasolina para estações
+de vendas de combustível no trabalho. Nele foi apresentado a formulação matematica e abordagem algoritma do PRV
 
-\subsection{Copyright Line}
-\noindent For Transactions and Journals papers, this is not necessary to use at the submission stage of your paper. The IEEE production process will add the appropriate copyright line. If you are writing a conference paper, please see the ``IEEEtran\_HOWTO.pdf'' for specific information on how to code "Publication ID Marks".
 
-\subsection{Abstracts}
 
-\subsection{Index Terms}
+\section{Descrição do Problema e Modelagem}
 
-\subsection{Initial Drop Cap Letter}
+\subsection{Parâmetros}
+\begin{itemize}
+    \item $c_{ij}$: Custo de transporte associado ao deslocamento direto do nó $i$ ao nó $j$.
+    \item $d_i$: Demanda agregada de peças da concessionária $i$ (sendo $d_0 = 0$).
+    \item $Q$: Capacidade volumétrica ou de carga útil máxima de cada veículo da frota.
+\end{itemize}
+\subsection{Variáveis de Decisão}
+\begin{itemize}
+    \item $x_{ij} = 1$, se o arco $(i,j)$ é percorrido por um veículo da frota;
+    \item $x_{ij} = 0$, caso contrário.
+\end{itemize}
 
-\subsection{Sections and Subsections}
+\section{Descrição do Algoritmo}
 
-\subsection{Citations to the Bibliography}
+\section{Resultados e Análise}
 
-\subsection{Figures}
-
-\subsection{Tables}
-
+\section{Conclusões}
 
 
 \begin{thebibliography}{1}
 
-\bibitem{ams}
-{\it{Mathematics into Type}}, American Mathematical Society. Online available: 
-
+\bibitem{livro}
+M. Arenales, V. Armentano, R. Morabito, and H. Yanasse, {\it{Pesquisa Operacional}}. Rio de Janeiro, Brasil: Elsevier, 2007.
+\bibitem{mopar}
+{\it{Mopar Oficial}}, Stellantis. Online available: \url{https://www.moparoficial.com.br/}
+\bibitem{kramer2016}
+R. H. F. R. Kramer, A. Subramanian, and P. H. V. Penna, ``Problema de roteamento de veículos assimétrico com frota heterogênea limitada: um estudo de caso em uma indústria de bebidas,'' {\it{Gestão \& Produção}}, vol. 23, no. 1, pp. 165--176, 2016. Online available: \url{https://www.scielo.br/j/gp/a/RqH5cF7hn6cTqJ7zbpnDgcr/?format=pdf&lang=pt}
+\bibitem{kumar2015}
+S. N. Kumar and R. Panneerselvam, ``A comparative study of proposed genetic algorithm-based solution with other algorithms for time-dependent vehicle routing problem with time windows for e-commerce supply chain,'' {\it{Journal of Service Science and Management}}, vol. 8, no. 6, pp. 844--859, 2015. Online available: \url{https://www.scirp.org/journal/paperinformation?paperid=61948}
 \end{thebibliography}
-
-
 \end{document}
 
 
