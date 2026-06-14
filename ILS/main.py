@@ -196,6 +196,7 @@ def _verifications():
         "t41": verify_t41,
         "t42": verify_t42,
         "t43": verify_t43,
+        "t44": verify_t44,
     }
 
 
@@ -436,6 +437,32 @@ def verify_t43(instance, args):
     print(f"  Histórico       : {len(history)} pontos  "
           f"({history[0][1]:.1f} -> {history[-1][1]:.1f} km em {history[-1][0]:.1f}s)")
     print("T4.3 verificado: s* viável, melhora sobre a construção, histórico populado")
+
+
+def verify_t44(instance, args):
+    """T4.4 — determinismo: mesma --seed → custo (e rotas) idênticos."""
+    print("\n--- T4.4: determinismo ---")
+    from ils import ils
+
+    def run():
+        # RNG único, derivado só de --seed, propagado a construção/RVND/perturbação
+        rng = np.random.default_rng(args.seed)
+        best, _ = ils(instance, rng, maxiter=1, maxiterils=5)
+        return best
+
+    b1 = run()
+    b2 = run()
+
+    assert b1.cost == b2.cost, \
+        f"determinismo falhou: custos diferentes ({b1.cost!r} != {b2.cost!r})"
+    assert b1.routes == b2.routes, \
+        "determinismo falhou: mesmas seeds produziram rotas diferentes!"
+
+    ok, errs = b1.validate()
+    assert ok, f"s* inválida no teste de determinismo: {errs[0]}"
+    print(f"  Execução 1 (seed={args.seed}): {b1.cost:.6f} km")
+    print(f"  Execução 2 (seed={args.seed}): {b2.cost:.6f} km")
+    print("T4.4 verificado: mesma seed → custo e rotas idênticos")
 
 
 if __name__ == "__main__":
