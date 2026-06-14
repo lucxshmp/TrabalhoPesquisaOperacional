@@ -172,68 +172,108 @@ def main():
     assert not ok_t24, "solução com veículo extra deve ser sinalizada como inválida!"
     print("T2.4 verificado: instância apertada não travou; extras sinalizados")
 
-    # T3.1 — vizinhanças intrarrotas (Reinserção, Or-opt2, Or-opt3, Exchange)
+    verify_t31(instance, args)
+    verify_t32(instance, args)
+    verify_t33(instance, args)
+
+
+def _apply_until_stable(viz, sol, nome):
+    """Aplica `viz` (best-improvement) em laço até não melhorar, com asserts."""
+    n_mov = 0
+    while True:
+        custo_antes = sol.cost
+        if not viz(sol):
+            break
+        n_mov += 1
+        assert sol.cost <= custo_antes + 1e-9, \
+            f"{nome}: custo aumentou ({custo_antes:.4f} -> {sol.cost:.4f})!"
+        ok_v, errs_v = sol.validate()
+        assert ok_v, f"{nome}: validate falhou após movimento: {errs_v[0]}"
+    return n_mov
+
+
+def verify_t31(instance, args):
+    """T3.1 — vizinhanças intrarrotas (Reinserção, Or-opt2, Or-opt3, Exchange)."""
     print("\n--- T3.1: vizinhanças intrarrotas ---")
     from neighborhoods import reinsertion, or_opt2, or_opt3, exchange
 
-    rng_t31 = np.random.default_rng(args.seed)
-    routes_t31, _ = build_solution(instance, rng_t31)
+    rng = np.random.default_rng(args.seed)
+    routes, _ = build_solution(instance, rng)
     # embaralha a ordem interna de cada rota para torná-la subótima e, assim,
     # exercitar de fato as vizinhanças (a construção já fica perto do ótimo intra)
-    for r in routes_t31:
-        rng_t31.shuffle(r)
-    sol_t31 = Solution.from_routes(instance, routes_t31)
-    custo_inicial = sol_t31.cost
+    for r in routes:
+        rng.shuffle(r)
+    sol = Solution.from_routes(instance, routes)
+    custo_inicial = sol.cost
 
     for nome, viz in [("Reinserção", reinsertion), ("Or-opt2", or_opt2),
                       ("Or-opt3", or_opt3), ("Exchange", exchange)]:
-        n_mov = 0
-        while True:
-            custo_antes = sol_t31.cost
-            if not viz(sol_t31):
-                break
-            n_mov += 1
-            # cada movimento não pode piorar o custo
-            assert sol_t31.cost <= custo_antes + 1e-9, \
-                f"{nome}: custo aumentou ({custo_antes:.4f} -> {sol_t31.cost:.4f})!"
-            # acumuladores incrementais devem bater com a recomputação do zero
-            ok_v, errs_v = sol_t31.validate()
-            assert ok_v, f"{nome}: validate falhou após movimento: {errs_v[0]}"
-        print(f"  {nome:11s}: {n_mov} movimento(s) aplicado(s)  custo={sol_t31.cost:.1f} km")
+        n_mov = _apply_until_stable(viz, sol, nome)
+        print(f"  {nome:11s}: {n_mov} movimento(s) aplicado(s)  custo={sol.cost:.1f} km")
 
-    reducao_ls = (custo_inicial - sol_t31.cost) / custo_inicial * 100
-    print(f"  Custo: {custo_inicial:.1f} -> {sol_t31.cost:.1f} km  (-{reducao_ls:.1f}% via intrarrotas)")
-    ok_final, _ = sol_t31.validate()
+    reducao = (custo_inicial - sol.cost) / custo_inicial * 100
+    print(f"  Custo: {custo_inicial:.1f} -> {sol.cost:.1f} km  (-{reducao:.1f}% via intrarrotas)")
+    ok_final, _ = sol.validate()
     assert ok_final, "solução final das intrarrotas deve ser válida!"
     print("T3.1 verificado: cada vizinhança não piora o custo; validate passa")
 
-    # T3.2 — vizinhanças inter-rotas (Shift/Swap/Cross)
+
+def verify_t32(instance, args):
+    """T3.2 — vizinhanças inter-rotas (Shift/Swap/Cross)."""
     print("\n--- T3.2: vizinhanças inter-rotas ---")
     from neighborhoods import shift10, shift20, swap11, swap21, swap22, cross
 
-    rng_t32 = np.random.default_rng(args.seed)
-    routes_t32, _ = build_solution(instance, rng_t32)
-    sol_base32 = Solution.from_routes(instance, routes_t32)
+    rng = np.random.default_rng(args.seed)
+    routes, _ = build_solution(instance, rng)
+    sol_base = Solution.from_routes(instance, routes)
 
     # cada vizinhança parte da MESMA solução construída → exercita seu delta
     for nome, viz in [("Shift(1,0)", shift10), ("Shift(2,0)", shift20),
                       ("Swap(1,1)", swap11), ("Swap(2,1)", swap21),
                       ("Swap(2,2)", swap22), ("Cross", cross)]:
-        sol_v = sol_base32.copy()
-        n_mov = 0
-        while True:
-            custo_antes = sol_v.cost
-            if not viz(sol_v):
-                break
-            n_mov += 1
-            assert sol_v.cost <= custo_antes + 1e-9, \
-                f"{nome}: custo aumentou ({custo_antes:.4f} -> {sol_v.cost:.4f})!"
-            ok_v, errs_v = sol_v.validate()
-            assert ok_v, f"{nome}: validate falhou após movimento: {errs_v[0]}"
-        red = (sol_base32.cost - sol_v.cost) / sol_base32.cost * 100
-        print(f"  {nome:11s}: {n_mov:3d} mov.  {sol_base32.cost:.1f} -> {sol_v.cost:.1f} km  (-{red:.1f}%)")
+        sol = sol_base.copy()
+        n_mov = _apply_until_stable(viz, sol, nome)
+        red = (sol_base.cost - sol.cost) / sol_base.cost * 100
+        print(f"  {nome:11s}: {n_mov:3d} mov.  {sol_base.cost:.1f} -> {sol.cost:.1f} km  (-{red:.1f}%)")
 
     print("T3.2 verificado: deltas corretos; cargas/durações das 2 rotas atualizadas")
+
+
+def verify_t33(instance, args):
+    """T3.3 — modo debug de deltas: suíte de movimentos aleatórios com asserts."""
+    print("\n--- T3.3: modo debug de deltas (suíte aleatória) ---")
+    import neighborhoods
+    from neighborhoods import INTRA_NEIGHBORHOODS, INTER_NEIGHBORHOODS
+
+    todas_viz = INTRA_NEIGHBORHOODS + INTER_NEIGHBORHOODS
+    rng = np.random.default_rng(args.seed + 7)
+    routes, _ = build_solution(instance, rng)
+    for r in routes:                # embaralha p/ gerar oportunidades de melhora
+        rng.shuffle(r)
+    sol = Solution.from_routes(instance, routes)
+    custo_inicial = sol.cost
+
+    neighborhoods.set_debug(True)   # liga a recomputação+assert a cada movimento
+    n_aplicados = 0
+    try:
+        sem_melhora = 0
+        # sorteia vizinhanças até estagnar (nenhuma das 10 melhora em sequência)
+        while sem_melhora < len(todas_viz):
+            viz = todas_viz[rng.integers(0, len(todas_viz))]
+            if viz(sol):            # se aplicou, o decorator já fez assert_consistent
+                n_aplicados += 1
+                sem_melhora = 0
+            else:
+                sem_melhora += 1
+    finally:
+        neighborhoods.set_debug(bool(args.debug))  # restaura conforme a flag
+
+    ok, errs = sol.validate()
+    assert ok, f"solução final da suíte debug inválida: {errs[0]}"
+    red = (custo_inicial - sol.cost) / custo_inicial * 100
+    print(f"  Movimentos aplicados (todos checados): {n_aplicados}")
+    print(f"  Custo: {custo_inicial:.1f} -> {sol.cost:.1f} km  (-{red:.1f}%)")
+    print("T3.3 verificado: suíte aleatória rodou com debug sem disparar assert")
 
 
 if __name__ == "__main__":

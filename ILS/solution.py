@@ -114,6 +114,69 @@ class Solution:
         return float(sum(nodes[v].demanda for v in self.routes[route_idx]))
 
     # ------------------------------------------------------------------
+    # Modo debug (T3.3): consistência dos deltas
+    # ------------------------------------------------------------------
+
+    def assert_consistent(self, tol: float = 1e-6, context: str = "") -> None:
+        """
+        Recomputa custo, cargas e durações do zero e compara com os
+        acumuladores incrementais (cost/loads/durations), disparando
+        AssertionError no primeiro desvio.
+
+        Usado após cada movimento das vizinhanças quando `--debug` está ativo,
+        para pegar erros de delta cedo (diferente de validate(), aqui só se
+        verifica a CONSISTÊNCIA dos incrementais, não a viabilidade).
+        """
+        c = self.cost_matrix
+        t = self.time_matrix
+        nodes = self.instance.nodes
+        where = f" [{context}]" if context else ""
+
+        assert len(self.loads) == len(self.routes), (
+            f"loads tem {len(self.loads)} entradas para "
+            f"{len(self.routes)} rotas{where}"
+        )
+        assert len(self.durations) == len(self.routes), (
+            f"durations tem {len(self.durations)} entradas para "
+            f"{len(self.routes)} rotas{where}"
+        )
+
+        total_cost = 0.0
+        for r_idx, route in enumerate(self.routes):
+            if not route:
+                assert abs(self.loads[r_idx]) <= tol, (
+                    f"rota {r_idx} vazia mas carga={self.loads[r_idx]:.6f}{where}"
+                )
+                assert abs(self.durations[r_idx]) <= tol, (
+                    f"rota {r_idx} vazia mas duração={self.durations[r_idx]:.6f}{where}"
+                )
+                continue
+
+            load = sum(nodes[v].demanda for v in route)
+            cost_r = c[0][route[0]]
+            dur = t[0][route[0]]
+            for k in range(len(route) - 1):
+                cost_r += c[route[k]][route[k + 1]]
+                dur += t[route[k]][route[k + 1]]
+            cost_r += c[route[-1]][0]
+            dur += t[route[-1]][0]
+            total_cost += cost_r
+
+            assert abs(self.loads[r_idx] - load) <= tol, (
+                f"carga incremental da rota {r_idx} ({self.loads[r_idx]:.6f}) "
+                f"≠ recomputada ({load:.6f}){where}"
+            )
+            assert abs(self.durations[r_idx] - dur) <= tol, (
+                f"duração incremental da rota {r_idx} ({self.durations[r_idx]:.6f}) "
+                f"≠ recomputada ({dur:.6f}){where}"
+            )
+
+        assert abs(self.cost - total_cost) <= tol, (
+            f"custo incremental ({self.cost:.6f}) "
+            f"≠ recomputado ({total_cost:.6f}){where}"
+        )
+
+    # ------------------------------------------------------------------
     # Validação de corretude
     # ------------------------------------------------------------------
 

@@ -23,9 +23,38 @@ Cada função retorna `True` se aplicou um movimento (a solução melhorou), ou
 
 from __future__ import annotations
 
+import functools
+
 from solution import Solution
 
 EPS = 1e-9
+
+
+# ---------------------------------------------------------------------------
+# T3.3 — Modo debug de deltas
+# ---------------------------------------------------------------------------
+# Quando ligado (via set_debug(True), acionado por --debug), após cada
+# movimento aplicado a vizinhança recomputa custo/cargas/durações do zero e
+# faz assert contra os valores incrementais — pegando erros de delta cedo.
+
+DEBUG = False
+
+
+def set_debug(flag: bool) -> None:
+    """Liga/desliga a checagem de consistência dos deltas após cada movimento."""
+    global DEBUG
+    DEBUG = bool(flag)
+
+
+def _debug_checked(fn):
+    """Decorator: se DEBUG e o movimento foi aplicado, valida os incrementais."""
+    @functools.wraps(fn)
+    def wrapper(sol: Solution) -> bool:
+        improved = fn(sol)
+        if improved and DEBUG:
+            sol.assert_consistent(context=fn.__name__)
+        return improved
+    return wrapper
 
 
 # ---------------------------------------------------------------------------
@@ -103,16 +132,19 @@ def _apply_best_or_opt(sol: Solution, L: int) -> bool:
     return True
 
 
+@_debug_checked
 def reinsertion(sol: Solution) -> bool:
     """Reinserção (Or-opt de 1 cliente): move 1 cliente para a melhor posição."""
     return _apply_best_or_opt(sol, 1)
 
 
+@_debug_checked
 def or_opt2(sol: Solution) -> bool:
     """Or-opt2: move um segmento de 2 clientes consecutivos."""
     return _apply_best_or_opt(sol, 2)
 
 
+@_debug_checked
 def or_opt3(sol: Solution) -> bool:
     """Or-opt3: move um segmento de 3 clientes consecutivos."""
     return _apply_best_or_opt(sol, 3)
@@ -169,6 +201,7 @@ def _best_exchange_in_route(route, c, t, dur_r, Y):
     return best
 
 
+@_debug_checked
 def exchange(sol: Solution) -> bool:
     """Exchange intrarrota: troca dois clientes (best-improvement em toda a solução)."""
     c, t = sol.cost_matrix, sol.time_matrix
@@ -290,11 +323,13 @@ def _apply_best_shift(sol: Solution, lam: int) -> bool:
     return True
 
 
+@_debug_checked
 def shift10(sol: Solution) -> bool:
     """Shift(1,0): move 1 cliente de uma rota para outra (melhor posição)."""
     return _apply_best_shift(sol, 1)
 
 
+@_debug_checked
 def shift20(sol: Solution) -> bool:
     """Shift(2,0): move 2 clientes consecutivos, testando o arco nas 2 ordens."""
     return _apply_best_shift(sol, 2)
@@ -382,16 +417,19 @@ def _apply_best_swap(sol: Solution, lam1: int, lam2: int) -> bool:
     return True
 
 
+@_debug_checked
 def swap11(sol: Solution) -> bool:
     """Swap(1,1): troca 1 cliente de r1 por 1 cliente de r2."""
     return _apply_best_swap(sol, 1, 1)
 
 
+@_debug_checked
 def swap21(sol: Solution) -> bool:
     """Swap(2,1): troca 2 clientes de r1 por 1 de r2 (seg de 2 nas 2 ordens)."""
     return _apply_best_swap(sol, 2, 1)
 
 
+@_debug_checked
 def swap22(sol: Solution) -> bool:
     """Swap(2,2): troca 2 clientes de r1 por 2 de r2 (4 combinações de arcos)."""
     return _apply_best_swap(sol, 2, 2)
@@ -427,6 +465,7 @@ def _cross_arrays(route, t, dem):
     return full, pt, pl, st, sl
 
 
+@_debug_checked
 def cross(sol: Solution) -> bool:
     """
     Cross: corta r1 após a posição cut1 e r2 após cut2, e troca os sufixos.
