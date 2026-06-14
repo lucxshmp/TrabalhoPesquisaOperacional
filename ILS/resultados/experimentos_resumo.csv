@@ -1,2 +1,2 @@
 instancia,n_clientes,runs,maxiter,maxiterils,melhor_custo,media_custo,desvio_custo,tempo_medio_s,tempo_total_s
-smoke-300,300,3,1,3,119.9824,129.4495,11.0586,18.86,56.58
+smoke-300,300,3,1,3,119.9824,129.4495,11.0586,17.28,51.84

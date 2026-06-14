@@ -198,6 +198,9 @@ def _verifications():
         "t43": verify_t43,
         "t44": verify_t44,
         "t51": verify_t51,
+        "t52": verify_t52,
+        "t53": verify_t53,
+        "t54": verify_t54,
     }
 
 
@@ -498,6 +501,72 @@ def verify_t51(instance, args):
     print(f"  melhor={summary['melhor_custo']}  média={summary['media_custo']}  "
           f"desvio={summary['desvio_custo']}  tempo_médio={summary['tempo_medio_s']}s")
     print("T5.1 verificado: CSV gerado em resultados/ com melhor/média/desvio/tempo")
+
+
+# cache: roda um experimento pequeno uma única vez para os blocos T5.2–T5.4
+_PLOT_EXPERIMENT = {}
+
+
+def _ensure_plot_experiment(instance, args):
+    if "csvs" not in _PLOT_EXPERIMENT:
+        from experiments import run_and_save
+        run_and_save(instance, "smoke-300", args.output_dir,
+                     runs=3, base_seed=args.seed, maxiter=1, maxiterils=3)
+        _PLOT_EXPERIMENT["csvs"] = True
+    return args.output_dir
+
+
+def _assert_png(path):
+    import os
+    assert os.path.exists(path) and os.path.getsize(path) > 0, \
+        f"PNG não gerado (ou vazio): {path}"
+
+
+def verify_t52(instance, args):
+    """T5.2 — curva de convergência: PNG por instância."""
+    print("\n--- T5.2: convergência (plots.py) ---")
+    import os
+    from plots import read_convergence, plot_convergence
+
+    out = _ensure_plot_experiment(instance, args)
+    conv = read_convergence(os.path.join(out, "convergencia.csv"))
+    assert conv, "convergencia.csv sem dados!"
+    paths = plot_convergence(conv, out)
+    for p in paths:
+        _assert_png(p)
+        print(f"  PNG: {p}")
+    print("T5.2 verificado: PNG de convergência por instância gerado")
+
+
+def verify_t53(instance, args):
+    """T5.3 — boxplot do custo final das N execuções."""
+    print("\n--- T5.3: boxplot (plots.py) ---")
+    import os
+    from plots import read_runs, plot_boxplot
+
+    out = _ensure_plot_experiment(instance, args)
+    runs = read_runs(os.path.join(out, "experimentos_execucoes.csv"))
+    assert runs, "experimentos_execucoes.csv sem dados!"
+    path = plot_boxplot(runs, out)
+    _assert_png(path)
+    print(f"  PNG: {path}")
+    print("T5.3 verificado: boxplot gerado")
+
+
+def verify_t54(instance, args):
+    """T5.4 — mapa de rotas (antes ida-e-volta vs. depois ILS)."""
+    print("\n--- T5.4: mapa de rotas (plots.py) ---")
+    import os
+    from plots import read_routes, plot_routes
+
+    out = _ensure_plot_experiment(instance, args)
+    rotas = read_routes(os.path.join(out, "melhor_rotas.csv"))
+    assert rotas, "melhor_rotas.csv sem dados!"
+    for inst, routes in rotas.items():
+        path = plot_routes(instance, routes, out, inst)
+        _assert_png(path)
+        print(f"  PNG: {path}  ({sum(1 for r in routes if r)} rotas)")
+    print("T5.4 verificado: mapa de rotas com cores por rota gerado")
 
 
 if __name__ == "__main__":

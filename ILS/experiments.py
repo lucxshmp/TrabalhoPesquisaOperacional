@@ -90,6 +90,7 @@ SUMMARY_COLUMNS = ["instancia", "n_clientes", "runs", "maxiter", "maxiterils",
                    "tempo_medio_s", "tempo_total_s"]
 RUNS_COLUMNS = ["instancia", "run", "seed", "custo", "tempo_s", "n_rotas"]
 CONV_COLUMNS = ["instancia", "run", "tempo_s", "custo"]
+ROUTES_COLUMNS = ["instancia", "rota", "posicao", "no"]
 
 
 def _write_csv(path, columns, rows):
@@ -119,6 +120,14 @@ def write_convergence_csv(path, instance_name, results):
     _write_csv(path, CONV_COLUMNS, rows)
 
 
+def write_routes_csv(path, instance_name, best):
+    """Salva as rotas da melhor solução (para o mapa de rotas, T5.4)."""
+    rows = [{"instancia": instance_name, "rota": ri, "posicao": pos, "no": no}
+            for ri, route in enumerate(r for r in best.routes if r)
+            for pos, no in enumerate(route)]
+    _write_csv(path, ROUTES_COLUMNS, rows)
+
+
 def run_and_save(instance, instance_name, output_dir, runs=10, base_seed=42,
                  maxiter=10, maxiterils=None):
     """Roda o experimento e grava os três CSVs. Retorna (resumo, results, melhor)."""
@@ -129,6 +138,8 @@ def run_and_save(instance, instance_name, output_dir, runs=10, base_seed=42,
                    instance_name, results)
     write_convergence_csv(os.path.join(output_dir, "convergencia.csv"),
                           instance_name, results)
+    write_routes_csv(os.path.join(output_dir, "melhor_rotas.csv"),
+                     instance_name, best)
     return summary, results, best
 
 
