@@ -178,6 +178,10 @@ def main():
 
     rng_t31 = np.random.default_rng(args.seed)
     routes_t31, _ = build_solution(instance, rng_t31)
+    # embaralha a ordem interna de cada rota para torná-la subótima e, assim,
+    # exercitar de fato as vizinhanças (a construção já fica perto do ótimo intra)
+    for r in routes_t31:
+        rng_t31.shuffle(r)
     sol_t31 = Solution.from_routes(instance, routes_t31)
     custo_inicial = sol_t31.cost
 
@@ -202,6 +206,34 @@ def main():
     ok_final, _ = sol_t31.validate()
     assert ok_final, "solução final das intrarrotas deve ser válida!"
     print("T3.1 verificado: cada vizinhança não piora o custo; validate passa")
+
+    # T3.2 — vizinhanças inter-rotas (Shift/Swap/Cross)
+    print("\n--- T3.2: vizinhanças inter-rotas ---")
+    from neighborhoods import shift10, shift20, swap11, swap21, swap22, cross
+
+    rng_t32 = np.random.default_rng(args.seed)
+    routes_t32, _ = build_solution(instance, rng_t32)
+    sol_base32 = Solution.from_routes(instance, routes_t32)
+
+    # cada vizinhança parte da MESMA solução construída → exercita seu delta
+    for nome, viz in [("Shift(1,0)", shift10), ("Shift(2,0)", shift20),
+                      ("Swap(1,1)", swap11), ("Swap(2,1)", swap21),
+                      ("Swap(2,2)", swap22), ("Cross", cross)]:
+        sol_v = sol_base32.copy()
+        n_mov = 0
+        while True:
+            custo_antes = sol_v.cost
+            if not viz(sol_v):
+                break
+            n_mov += 1
+            assert sol_v.cost <= custo_antes + 1e-9, \
+                f"{nome}: custo aumentou ({custo_antes:.4f} -> {sol_v.cost:.4f})!"
+            ok_v, errs_v = sol_v.validate()
+            assert ok_v, f"{nome}: validate falhou após movimento: {errs_v[0]}"
+        red = (sol_base32.cost - sol_v.cost) / sol_base32.cost * 100
+        print(f"  {nome:11s}: {n_mov:3d} mov.  {sol_base32.cost:.1f} -> {sol_v.cost:.1f} km  (-{red:.1f}%)")
+
+    print("T3.2 verificado: deltas corretos; cargas/durações das 2 rotas atualizadas")
 
 
 if __name__ == "__main__":
