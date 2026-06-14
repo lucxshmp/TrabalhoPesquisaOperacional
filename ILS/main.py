@@ -197,6 +197,7 @@ def _verifications():
         "t42": verify_t42,
         "t43": verify_t43,
         "t44": verify_t44,
+        "t51": verify_t51,
     }
 
 
@@ -463,6 +464,40 @@ def verify_t44(instance, args):
     print(f"  Execução 1 (seed={args.seed}): {b1.cost:.6f} km")
     print(f"  Execução 2 (seed={args.seed}): {b2.cost:.6f} km")
     print("T4.4 verificado: mesma seed → custo e rotas idênticos")
+
+
+def verify_t51(instance, args):
+    """T5.1 — experiments.py: gera CSV-resumo com melhor/média/desvio/tempo."""
+    print("\n--- T5.1: experiments.py (CSV de resultados) ---")
+    import csv
+    import os
+    from experiments import run_and_save
+
+    # config reduzida p/ o smoke test (runs reais: python experiments.py --runs 10)
+    summary, results, best = run_and_save(
+        instance, "smoke-300", args.output_dir,
+        runs=3, base_seed=args.seed, maxiter=1, maxiterils=3,
+    )
+
+    path = os.path.join(args.output_dir, "experimentos_resumo.csv")
+    assert os.path.exists(path), f"CSV não gerado: {path}"
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        cols = reader.fieldnames or []
+        rows = list(reader)
+
+    for needed in ["melhor_custo", "media_custo", "desvio_custo", "tempo_medio_s"]:
+        assert needed in cols, f"coluna obrigatória ausente no CSV: {needed}"
+    assert len(rows) >= 1, "CSV-resumo sem linhas de dados!"
+    assert len(results) == 3, "número de execuções inesperado!"
+    ok, errs = best.validate()
+    assert ok, f"melhor solução do experimento inválida: {errs[0]}"
+
+    print(f"  CSV resumo     : {path}")
+    print(f"  Colunas        : {cols}")
+    print(f"  melhor={summary['melhor_custo']}  média={summary['media_custo']}  "
+          f"desvio={summary['desvio_custo']}  tempo_médio={summary['tempo_medio_s']}s")
+    print("T5.1 verificado: CSV gerado em resultados/ com melhor/média/desvio/tempo")
 
 
 if __name__ == "__main__":

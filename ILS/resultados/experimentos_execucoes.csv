@@ -1,0 +1,4 @@
+instancia,run,seed,custo,tempo_s,n_rotas
+smoke-300,0,42,126.7619,12.56,3
+smoke-300,1,43,119.9824,16.81,3
+smoke-300,2,44,141.6042,27.21,4
