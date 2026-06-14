@@ -172,6 +172,37 @@ def main():
     assert not ok_t24, "solução com veículo extra deve ser sinalizada como inválida!"
     print("T2.4 verificado: instância apertada não travou; extras sinalizados")
 
+    # T3.1 — vizinhanças intrarrotas (Reinserção, Or-opt2, Or-opt3, Exchange)
+    print("\n--- T3.1: vizinhanças intrarrotas ---")
+    from neighborhoods import reinsertion, or_opt2, or_opt3, exchange
+
+    rng_t31 = np.random.default_rng(args.seed)
+    routes_t31, _ = build_solution(instance, rng_t31)
+    sol_t31 = Solution.from_routes(instance, routes_t31)
+    custo_inicial = sol_t31.cost
+
+    for nome, viz in [("Reinserção", reinsertion), ("Or-opt2", or_opt2),
+                      ("Or-opt3", or_opt3), ("Exchange", exchange)]:
+        n_mov = 0
+        while True:
+            custo_antes = sol_t31.cost
+            if not viz(sol_t31):
+                break
+            n_mov += 1
+            # cada movimento não pode piorar o custo
+            assert sol_t31.cost <= custo_antes + 1e-9, \
+                f"{nome}: custo aumentou ({custo_antes:.4f} -> {sol_t31.cost:.4f})!"
+            # acumuladores incrementais devem bater com a recomputação do zero
+            ok_v, errs_v = sol_t31.validate()
+            assert ok_v, f"{nome}: validate falhou após movimento: {errs_v[0]}"
+        print(f"  {nome:11s}: {n_mov} movimento(s) aplicado(s)  custo={sol_t31.cost:.1f} km")
+
+    reducao_ls = (custo_inicial - sol_t31.cost) / custo_inicial * 100
+    print(f"  Custo: {custo_inicial:.1f} -> {sol_t31.cost:.1f} km  (-{reducao_ls:.1f}% via intrarrotas)")
+    ok_final, _ = sol_t31.validate()
+    assert ok_final, "solução final das intrarrotas deve ser válida!"
+    print("T3.1 verificado: cada vizinhança não piora o custo; validate passa")
+
 
 if __name__ == "__main__":
     main()
