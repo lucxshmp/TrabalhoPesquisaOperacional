@@ -82,17 +82,12 @@ def main():
     print(f"Dimensão cost_matrix : {instance.cost_matrix.shape}")
     print(f"Dimensão time_matrix : {instance.time_matrix.shape}")
 
-    # Smoke test: rotas ida-e-volta triviais (uma rota por cliente)
-    print("\n--- Smoke test: rotas ida-e-volta ---")
+    # Smoke test / T1.3 — baseline ida-e-volta (uma rota por cliente)
+    print("\n--- Baseline ida-e-volta (T1.3) ---")
     routes_trivial = [[i] for i in range(1, len(instance.nodes))]
     sol_trivial = Solution.from_routes(instance, routes_trivial)
-    ok, errors = sol_trivial.validate()
-    if ok:
-        print(f"Solução trivial: custo={sol_trivial.cost:.4f} km  [VÁLIDA]")
-    else:
-        print("Solução trivial INVÁLIDA:")
-        for e in errors:
-            print(f"  {e}")
+    baseline_cost = sol_trivial.cost
+    print(f"Custo baseline   : {baseline_cost:.1f} km  (viola frota — apenas referência de custo)")
 
     # T2.1 — semeadura por maior demanda
     print("\n--- T2.1: semeadura por maior demanda ---")
@@ -135,25 +130,23 @@ def main():
     print(f"γ disponíveis    : {len(GAMMA_VALUES)} valores ({GAMMA_VALUES[0]}..{GAMMA_VALUES[-1]})")
     print("Critérios OK [DoD T2.2 verificado]")
 
-    # T2.3 — estratégias EIS e EIP
-    print("\n--- T2.3: construção completa (EIS / EIP) ---")
-    rng = np.random.default_rng(args.seed)
+    # T2.3 / T2.5 — estratégias EIS e EIP + comparação com baseline
+    print("\n--- T2.3 / T2.5: construção vs. baseline ---")
 
     for label, seed_offset in [("EIS", 0), ("EIP", 1)]:
         rng_test = np.random.default_rng(args.seed + seed_offset)
-        # forçar estratégia: EIS usa integers par, EIP usa integers ímpar
-        # (hack simples para testar as duas sem expor parâmetro extra)
         routes_built, leftover = build_solution(instance, rng_test)
         sol = Solution.from_routes(instance, routes_built)
         ok, errors = sol.validate()
         status = "VÁLIDA" if ok else f"inválida ({errors[0]})"
+        reducao = (baseline_cost - sol.cost) / baseline_cost * 100
+        assert sol.cost <= baseline_cost, f"{label}: custo ({sol.cost:.1f}) > baseline ({baseline_cost:.1f})!"
         print(
-            f"  {label}: rotas={len([r for r in routes_built if r])}  "
-            f"clientes pendentes={len(leftover)}  "
-            f"custo={sol.cost:.1f} km  [{status}]"
+            f"  {label}: custo={sol.cost:.1f} km  "
+            f"redução={reducao:.1f}% vs baseline  [{status}]"
         )
 
-    print("T2.3 verificado")
+    print("T2.3 / T2.5 verificados: construção < baseline")
 
     # T2.4 — veículo extra: força instância apertada com K=2 e Y pequeno
     print("\n--- T2.4: veículo extra (instância apertada K=2, Y=0.1h) ---")
