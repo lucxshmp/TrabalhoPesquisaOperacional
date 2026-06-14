@@ -175,6 +175,7 @@ def main():
     verify_t31(instance, args)
     verify_t32(instance, args)
     verify_t33(instance, args)
+    verify_t41(instance, args)
 
 
 def _apply_until_stable(viz, sol, nome):
@@ -274,6 +275,42 @@ def verify_t33(instance, args):
     print(f"  Movimentos aplicados (todos checados): {n_aplicados}")
     print(f"  Custo: {custo_inicial:.1f} -> {sol.cost:.1f} km  (-{red:.1f}%)")
     print("T3.3 verificado: suíte aleatória rodou com debug sem disparar assert")
+
+
+def verify_t41(instance, args):
+    """T4.1 — RVND: converge a ótimo local; custo nunca piora; validate passa."""
+    print("\n--- T4.1: RVND (Algoritmo 4) ---")
+    import neighborhoods
+    from neighborhoods import INTRA_NEIGHBORHOODS, INTER_NEIGHBORHOODS
+    from rvnd import rvnd
+
+    rng = np.random.default_rng(args.seed)
+    routes, _ = build_solution(instance, rng)
+    sol = Solution.from_routes(instance, routes)
+    custo_inicial = sol.cost
+
+    # debug ligado: garante que o custo nunca piora e os deltas batem a cada passo
+    neighborhoods.set_debug(True)
+    try:
+        rvnd(sol, rng)
+    finally:
+        neighborhoods.set_debug(bool(args.debug))
+
+    assert sol.cost <= custo_inicial + 1e-9, \
+        f"RVND piorou o custo ({custo_inicial:.1f} -> {sol.cost:.1f})!"
+    ok, errs = sol.validate()
+    assert ok, f"solução do RVND inválida: {errs[0]}"
+
+    # ótimo local: nenhuma das 10 vizinhanças encontra melhora adicional
+    todas_viz = INTER_NEIGHBORHOODS + INTRA_NEIGHBORHOODS
+    assert not any(viz(sol.copy()) for viz in todas_viz), \
+        "RVND não convergiu: ainda há vizinhança com movimento de melhora!"
+
+    red = (custo_inicial - sol.cost) / custo_inicial * 100
+    n_rotas = sum(1 for r in sol.routes if r)
+    print(f"  Custo: {custo_inicial:.1f} -> {sol.cost:.1f} km  (-{red:.1f}%)")
+    print(f"  Rotas não-vazias: {n_rotas}/{instance.K}")
+    print("T4.1 verificado: RVND em ótimo local; custo não piorou; validate passa")
 
 
 if __name__ == "__main__":
