@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.abspath(BCP_DIR))
 
 import numpy as np
 from instance_reader import load_instance
+from solution import Solution
 
 ILS_DIR = os.path.dirname(__file__)
 DEFAULT_DADOS  = os.path.join(ILS_DIR, "datasets", "dadosPO.xlsx")
@@ -69,9 +70,28 @@ def main():
     instance.time_matrix = np.array(instance.time_matrix, dtype=float)
 
     n_clientes = len(instance.nodes) - 1
+    total_demand = sum(nd.demanda for nd in instance.nodes[1:])
+    min_routes = -(-int(total_demand) // instance.Q)  # ceil division
     print(f"\nClientes (nós)       : {n_clientes}")
+    print(f"Demanda total        : {total_demand}")
+    print(f"Mínimo teórico rotas : {min_routes}")
     print(f"Dimensão cost_matrix : {instance.cost_matrix.shape}")
     print(f"Dimensão time_matrix : {instance.time_matrix.shape}")
+
+    # Smoke test: rotas ida-e-volta triviais (uma rota por cliente)
+    print("\n--- Smoke test: rotas ida-e-volta ---")
+    routes_trivial = [[i] for i in range(1, len(instance.nodes))]
+    sol_trivial = Solution.from_routes(instance, routes_trivial)
+    ok, errors = sol_trivial.validate()
+    if ok:
+        print(f"Solução trivial: custo={sol_trivial.cost:.4f} km  [VÁLIDA]")
+    else:
+        print("Solução trivial INVÁLIDA:")
+        for e in errors:
+            print(f"  {e}")
+
+    print("\n[T1.1 concluída] solution.py e main.py prontos.")
+    print("Próxima etapa: construction.py (T1.2)")
 
 
 if __name__ == "__main__":
