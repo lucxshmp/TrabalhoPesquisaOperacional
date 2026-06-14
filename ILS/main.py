@@ -176,6 +176,7 @@ def main():
     verify_t32(instance, args)
     verify_t33(instance, args)
     verify_t41(instance, args)
+    verify_t42(instance, args)
 
 
 def _apply_until_stable(viz, sol, nome):
@@ -311,6 +312,48 @@ def verify_t41(instance, args):
     print(f"  Custo: {custo_inicial:.1f} -> {sol.cost:.1f} km  (-{red:.1f}%)")
     print(f"  Rotas não-vazias: {n_rotas}/{instance.K}")
     print("T4.1 verificado: RVND em ótimo local; custo não piorou; validate passa")
+
+
+def verify_t42(instance, args):
+    """T4.2 — perturbações: alteram a solução mantendo viabilidade."""
+    print("\n--- T4.2: perturbações (Multiple-Swap / Multiple-Shift) ---")
+    from perturbation import multiple_swap, multiple_shift, perturb
+    from rvnd import rvnd
+
+    rng = np.random.default_rng(args.seed)
+    routes, _ = build_solution(instance, rng)
+    sol_base = Solution.from_routes(instance, routes)
+
+    # cada perturbação isoladamente: altera a solução e mantém viabilidade
+    for nome, pert in [("Multiple-Swap", multiple_swap), ("Multiple-Shift", multiple_shift)]:
+        sol = sol_base.copy()
+        antes = sol.cost
+        n = pert(sol, rng, n_moves=10)
+        sol.assert_consistent(context=nome)       # deltas batem com recomputação
+        ok, errs = sol.validate()                  # viabilidade (Q, Y, cobertura)
+        assert ok, f"{nome}: solução perturbada inválida: {errs[0]}"
+        assert n > 0 and abs(sol.cost - antes) > 1e-9, \
+            f"{nome}: perturbação não alterou a solução!"
+        print(f"  {nome:14s}: {n:2d} mov.  custo {antes:.1f} -> {sol.cost:.1f} km  [viável]")
+
+    # perturbação sorteada repetida, sempre checando consistência/viabilidade
+    sol = sol_base.copy()
+    for _ in range(20):
+        perturb(sol, rng)
+        sol.assert_consistent(context="perturb")
+        ok, errs = sol.validate()
+        assert ok, f"perturb: solução inválida: {errs[0]}"
+
+    # reparabilidade: após perturbar, o RVND volta a um ótimo local viável
+    sol = sol_base.copy()
+    custo_opt = rvnd(sol.copy(), np.random.default_rng(args.seed)).cost
+    perturb(sol, rng, n_moves=15)
+    rvnd(sol, rng)
+    ok, errs = sol.validate()
+    assert ok, f"reparabilidade: solução pós-RVND inválida: {errs[0]}"
+    print(f"  Reparabilidade : perturba e RVND repara → custo={sol.cost:.1f} km "
+          f"(ótimo local direto={custo_opt:.1f}) [viável]")
+    print("T4.2 verificado: perturbações alteram a solução mantendo viabilidade")
 
 
 if __name__ == "__main__":
