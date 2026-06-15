@@ -1,0 +1,2 @@
+instancia,n_clientes,runs,maxiter,maxiterils,melhor_custo,media_custo,desvio_custo,tempo_medio_s,tempo_total_s
+040clientes,245,2,1,3,178.9379,181.0848,3.0361,20.26,40.51

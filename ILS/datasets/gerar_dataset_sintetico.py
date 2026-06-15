@@ -43,18 +43,22 @@ PEDIDO_ID_BASE = 9_000_000_000
 CEP_BASE = 90_000_000  # vira "9000xxxx" (8 dígitos) ao formatar
 
 
-def gerar_clientes(n, rng):
-    """Cria n clientes sintéticos com coords distintas e CEPs de 8 dígitos."""
+def gerar_clientes(n, rng, offset=0):
+    """Cria n clientes sintéticos com coords distintas e CEPs de 8 dígitos.
+
+    offset desloca os IDs/CEPs para um bloco disjunto — assim datasets com
+    quantidades diferentes de clientes não compartilham chaves no cache.
+    """
     lats = rng.uniform(LAT_MIN, LAT_MAX, size=n)
     lons = rng.uniform(LON_MIN, LON_MAX, size=n)
     clientes, coords_por_cep = [], {}
     for i in range(n):
-        cid = CLIENTE_ID_BASE + i + 1
-        cep_num = CEP_BASE + i + 1           # 90000001, 90000002, ...
-        cep_str = f"{cep_num:08d}"           # exatamente 8 dígitos
+        cid = CLIENTE_ID_BASE + offset + i + 1
+        cep_num = CEP_BASE + offset + i + 1   # 8 dígitos (offset mantém disjunto)
+        cep_str = f"{cep_num:08d}"
         clientes.append({
             "idcliente": cid,
-            "nome concessionaria ": f"CLIENTE SINTETICO {i + 1:03d}",
+            "nome concessionaria ": f"CLIENTE SINTETICO {offset + i + 1:04d}",
             "cidade": "BELO HORIZONTE",
             "cep": cep_str,
         })
@@ -62,7 +66,7 @@ def gerar_clientes(n, rng):
     return clientes, coords_por_cep
 
 
-def gerar_pedidos(clientes, rng, por_dia_util=35, por_fim_semana=12):
+def gerar_pedidos(clientes, rng, por_dia_util=35, por_fim_semana=12, offset=0):
     """Pedidos sintéticos (demanda=1) ao longo de junho/2026."""
     ids = [c["idcliente"] for c in clientes]
     dias = pd.date_range("2026-06-01", "2026-06-30", freq="D")
@@ -71,7 +75,7 @@ def gerar_pedidos(clientes, rng, por_dia_util=35, por_fim_semana=12):
         n_dia = por_fim_semana if dia.weekday() >= 5 else por_dia_util
         for _ in range(n_dia):
             pedidos.append({
-                "id pedido": PEDIDO_ID_BASE + contador,
+                "id pedido": PEDIDO_ID_BASE + offset * 1_000_000 + contador,
                 "id cliente": int(rng.choice(ids)),
                 "demanda": 1,
                 "data ": dia,
@@ -99,34 +103,29 @@ def atualizar_cache(coords_por_cep):
           f"backup em {os.path.basename(CACHE_PATH)}.bak)")
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Gera dataset misto real+sintético")
-    ap.add_argument("--n-clientes", type=int, default=80)
-    ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--por-dia-util", type=int, default=35)
-    ap.add_argument("--por-fim-semana", type=int, default=12)
-    ap.add_argument("--entrada", default=os.path.join(DATASETS_DIR, "dadosPO.xlsx"))
-    ap.add_argument("--saida",
-                    default=os.path.join(DATASETS_DIR, "dadosPO_real_mais_sintetico.xlsx"))
-    args = ap.parse_args()
+def gerar_dataset(n_clientes, saida, entrada=None, seed=42, offset=0,
+                  por_dia_util=35, por_fim_semana=12, verbose=True):
+    """Gera um dataset misto (real + n_clientes sintéticos) e retorna o caminho.
 
-    rng = np.random.default_rng(args.seed)
+    offset reserva um bloco disjunto de IDs/CEPs — use valores diferentes para
+    datasets distintos (ex.: o experimento que varia o nº de clientes) p/ que as
+    coordenadas no cache não se misturem entre eles.
+    """
+    entrada = entrada or os.path.join(DATASETS_DIR, "dadosPO.xlsx")
+    rng = np.random.default_rng(seed)
 
     # 1. lê o real SEM alterar (preserva nomes de coluna originais)
-    xl = pd.ExcelFile(args.entrada)
+    xl = pd.ExcelFile(entrada)
     conc_real = xl.parse("concessionárias")
     ped_real = xl.parse("pedidos")
-    print(f"real: {len(conc_real)} concessionárias, {len(ped_real)} pedidos")
 
-    # 2-3. clientes sintéticos + coords no cache
-    clientes, coords_por_cep = gerar_clientes(args.n_clientes, rng)
+    # 2-3. clientes sintéticos + coords no cache (aditivo, com backup)
+    clientes, coords_por_cep = gerar_clientes(n_clientes, rng, offset=offset)
     atualizar_cache(coords_por_cep)
 
     # 4. pedidos sintéticos
-    pedidos = gerar_pedidos(clientes, rng,
-                            por_dia_util=args.por_dia_util,
-                            por_fim_semana=args.por_fim_semana)
-    print(f"sintético: {len(clientes)} clientes, {len(pedidos)} pedidos")
+    pedidos = gerar_pedidos(clientes, rng, por_dia_util=por_dia_util,
+                            por_fim_semana=por_fim_semana, offset=offset)
 
     # 5. concatena (real + sintético) mantendo as colunas do real
     conc_out = pd.concat([conc_real, pd.DataFrame(clientes)], ignore_index=True)
@@ -134,11 +133,32 @@ def main():
     conc_out = conc_out[list(conc_real.columns)]
     ped_out = ped_out[list(ped_real.columns)]
 
-    with pd.ExcelWriter(args.saida, engine="openpyxl") as w:
+    with pd.ExcelWriter(saida, engine="openpyxl") as w:
         conc_out.to_excel(w, sheet_name="concessionárias", index=False)
         ped_out.to_excel(w, sheet_name="pedidos", index=False)
-    print(f"misto: {len(conc_out)} concessionárias, {len(ped_out)} pedidos")
-    print(f"-> {args.saida}")
+
+    if verbose:
+        print(f"real: {len(conc_real)} concessionárias, {len(ped_real)} pedidos | "
+              f"sintético: {len(clientes)} clientes, {len(pedidos)} pedidos")
+        print(f"misto: {len(conc_out)} concessionárias, {len(ped_out)} pedidos "
+              f"-> {saida}")
+    return saida
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Gera dataset misto real+sintético")
+    ap.add_argument("--n-clientes", type=int, default=80)
+    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--offset", type=int, default=0)
+    ap.add_argument("--por-dia-util", type=int, default=35)
+    ap.add_argument("--por-fim-semana", type=int, default=12)
+    ap.add_argument("--entrada", default=os.path.join(DATASETS_DIR, "dadosPO.xlsx"))
+    ap.add_argument("--saida",
+                    default=os.path.join(DATASETS_DIR, "dadosPO_real_mais_sintetico.xlsx"))
+    args = ap.parse_args()
+    gerar_dataset(args.n_clientes, args.saida, entrada=args.entrada,
+                  seed=args.seed, offset=args.offset,
+                  por_dia_util=args.por_dia_util, por_fim_semana=args.por_fim_semana)
 
 
 if __name__ == "__main__":
