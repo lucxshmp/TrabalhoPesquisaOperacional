@@ -49,7 +49,7 @@ SCENARIOS = [
     {
         "nome": "cenario3_mes", "titulo": "10 caminhões — 1 mês (junho/2026)",
         "K": 10, "data_inicio": "2026-06-01", "data_fim": "2026-06-30",
-        "runs": 3, "maxiter": 1, "maxiterils": 4,
+        "runs": 3, "maxiter": 1, "maxiterils": 20,
     },
 ]
 

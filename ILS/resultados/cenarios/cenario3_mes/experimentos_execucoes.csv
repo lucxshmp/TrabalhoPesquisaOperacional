@@ -1,0 +1,4 @@
+instancia,run,seed,custo,tempo_s,n_rotas
+cenario3_mes,0,42,241.8783,534.76,7
+cenario3_mes,1,43,245.6352,444.94,7
+cenario3_mes,2,44,239.5403,675.7,7

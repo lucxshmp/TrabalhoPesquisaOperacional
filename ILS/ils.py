@@ -69,10 +69,16 @@ def ils(
     for _ in range(maxiter):
         routes, _ = build_solution(instance, rng)
         s = Solution.from_routes(instance, routes)
-        rvnd(s, rng)
 
+        # no 1º reinício, registra o custo da solução CONSTRUÍDA (antes do RVND)
+        # como ponto inicial — assim a curva mostra a queda construção→RVND→ILS
+        if best is None:
+            best = s.copy()
+            record()
+
+        rvnd(s, rng)
         s_best = s                       # melhor solução deste reinício (s')
-        if best is None or s_best.cost < best.cost:
+        if s_best.cost < best.cost:
             best = s_best.copy()
         record()
 

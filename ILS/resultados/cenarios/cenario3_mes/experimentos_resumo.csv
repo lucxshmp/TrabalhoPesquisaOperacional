@@ -1,0 +1,2 @@
+instancia,n_clientes,runs,maxiter,maxiterils,melhor_custo,media_custo,desvio_custo,tempo_medio_s,tempo_total_s
+cenario3_mes,669,3,1,20,239.5403,242.3513,3.0748,551.8,1655.4
