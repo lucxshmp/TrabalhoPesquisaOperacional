@@ -1,3 +1,4 @@
 instancia,run,seed,custo,tempo_s,n_rotas
-080clientes,0,42,239.6028,50.51,4
-080clientes,1,43,248.323,40.0,4
+080clientes,0,42,232.894,487.53,4
+080clientes,1,43,239.9358,340.02,4
+080clientes,2,44,238.8422,242.84,4
