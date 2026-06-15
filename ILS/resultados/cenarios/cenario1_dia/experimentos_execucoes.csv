@@ -1,0 +1,6 @@
+instancia,run,seed,custo,tempo_s,n_rotas
+cenario1_dia,0,42,87.2179,14.78,2
+cenario1_dia,1,43,89.8741,23.95,2
+cenario1_dia,2,44,88.653,32.42,2
+cenario1_dia,3,45,92.4753,27.87,2
+cenario1_dia,4,46,87.2179,20.68,2

@@ -1,0 +1,2 @@
+instancia,n_clientes,runs,maxiter,maxiterils,melhor_custo,media_custo,desvio_custo,tempo_medio_s,tempo_total_s
+cenario2_semana,425,3,2,6,175.8889,176.5841,0.6794,106.41,319.22

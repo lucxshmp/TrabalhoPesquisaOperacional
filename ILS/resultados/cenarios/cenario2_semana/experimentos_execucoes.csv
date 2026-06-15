@@ -1,0 +1,4 @@
+instancia,run,seed,custo,tempo_s,n_rotas
+cenario2_semana,0,42,177.2466,99.43,5
+cenario2_semana,1,43,176.6169,120.89,5
+cenario2_semana,2,44,175.8889,98.9,5

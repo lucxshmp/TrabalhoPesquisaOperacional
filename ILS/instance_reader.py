@@ -10,7 +10,8 @@ from data.instance_reader import obter_coordenadas_por_cep, haversine
 from data.structures import Node, Instance
 
 
-def load_instance(path, depot_lat, depot_lon, Q, Y, K, max_clientes=None):
+def load_instance(path, depot_lat, depot_lon, Q, Y, K, max_clientes=None,
+                  data_inicio=None, data_fim=None):
     """
     Lê dadosPO.xlsx (abas 'concessionárias' e 'pedidos') e constrói a Instance.
 
@@ -21,6 +22,8 @@ def load_instance(path, depot_lat, depot_lon, Q, Y, K, max_clientes=None):
     max_clientes: se informado, limita a instância aos primeiros N pedidos
                   geocodificáveis (depósito não conta). Útil para reduzir a
                   escala (ex.: 300, a do artigo) e o tempo do ILS.
+    data_inicio / data_fim: filtram os pedidos por período (inclusive), no
+                  formato 'YYYY-MM-DD'. Usados pelos cenários (dia/semana/mês).
     """
     xl = pd.ExcelFile(path)
     df_conc = xl.parse("concessionárias")
@@ -39,6 +42,16 @@ def load_instance(path, depot_lat, depot_lon, Q, Y, K, max_clientes=None):
         "id pedido":  "id",
         "id cliente": "concessionaria_id",
     })
+
+    # filtra pedidos por período (cenários dia/semana/mês), inclusive
+    if data_inicio is not None or data_fim is not None:
+        datas = pd.to_datetime(df_ped["data"], errors="coerce", dayfirst=True).dt.normalize()
+        mask = pd.Series(True, index=df_ped.index)
+        if data_inicio is not None:
+            mask &= datas >= pd.Timestamp(data_inicio).normalize()
+        if data_fim is not None:
+            mask &= datas <= pd.Timestamp(data_fim).normalize()
+        df_ped = df_ped[mask].copy()
 
     # filtra apenas concessionárias que têm pedidos
     ids_com_pedido = df_ped["concessionaria_id"].unique()
