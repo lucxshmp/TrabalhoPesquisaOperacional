@@ -1,0 +1,14 @@
+"timestamp","clientes","arquivo","status","tempo","colunas","iteracoes","rotas","custo","gap","erro","log"
+"2026-06-16T22:17:28.325726","20","dataset_20_clientes.xlsx","OK","2.67","1172","36","[[0, 3, 0], [0, 16, 0], [0, 1, 28, 9, 17, 0], [0, 2, 12, 23, 10, 25, 6, 7, 8, 11, 14, 21, 0], [0, 29, 31, 5, 15, 27, 30, 32, 0], [0, 22, 24, 13, 4, 26, 20, 18, 19, 0]]","269.4123148645987","","","Pedidos removidos por CEP inválido: 0
+Set parameter Username
+Set parameter LicenseID to value 2836114
+Academic license - for non-commercial use only - expires 2027-06-16
+Nova rota aglutinada promissora: [0, 16, 22, 13, 4, 26, 20, 17, 19, 12, 0] | rc=-15972.25 | custo=49.80
+Nova rota aglutinada promissora: [0, 16, 22, 13, 4, 26, 20, 17, 12, 10, 11, 0] | rc=-17959.67 | custo=62.38
+Nova rota aglutinada promissora: [0, 16, 22, 13, 4, 26, 20, 17, 12, 23, 11, 0] | rc=-17959.85 | custo=62.20
+Nova rota "
+"2026-06-16T22:17:31.002447","50","dataset_50_clientes.xlsx","OK","3545.85","5411","138","[[0, 3, 0], [0, 1, 22, 26, 36, 55, 21, 0], [0, 52, 50, 29, 35, 39, 44, 57, 56, 58, 17, 31, 2, 43, 0], [0, 2, 31, 38, 11, 8, 7, 42, 6, 15, 14, 37, 28, 62, 51, 10, 12, 59, 0], [0, 23, 61, 54, 60, 13, 27, 19, 9, 34, 49, 16, 20, 5, 18, 33, 45, 24, 0], [0, 53, 47, 32, 41, 46, 48, 25, 4, 54, 40, 61, 30, 23, 0]]","288.2848815362454","","","Pedidos removidos por CEP inválido: 0
+Nova rota aglutinada promissora: [0, 52, 50, 29, 39, 35, 57, 44, 56, 58, 17, 31, 2, 59, 21, 55, 36, 26, 12, 0] | rc=-33953.95 | custo=56.47
+Nova rota aglutinada promissora: [0, 52, 50, 29, 39, 35, 57, 44, 56, 58, 17, 31, 2, 59, 21, 55, 36, 45, 12, 11, 0] | rc=-35943.37 | custo=67.04
+Nova rota aglutinada promissora: [0, 52, 50, 29, 39, 35, 57, 44, 56, 58, 17, 31, 2, 59, 21, 55, 36, 45, 12, 0] | rc=-33954.71 | custo=55.71
+Nova rota aglutinada promissora: [0, 5"

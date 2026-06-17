@@ -137,13 +137,15 @@ def haversine(lat1, lon1, lat2, lon2):
 # 3. leitura das planilhas
 
 def load_concessionarias(path):
-    df = pd.read_excel(path)
+    df = pd.read_excel(path, sheet_name='concessionarias')
+    
+    # Remove espaços extras dos nomes de coluna
+    df.columns = df.columns.str.strip()
 
     concessionarias = {}
     concessionarias_invalidas = set()
 
     for _, row in df.iterrows():
-
         c = Concessionaria(
             id=row['idcliente'],
             nome=row['nome concessionaria'],
@@ -158,7 +160,8 @@ def load_concessionarias(path):
             c.longitude = float(lon)
 
         else:
-            coords = obter_coordenadas_por_cep(c.cep)
+            cep_limpo = str(c.cep).replace('-', '').replace('.', '').zfill(8)
+            coords = buscar_coordenada_web_fallback(cep_limpo)
 
             if coords is None:
                 print(f"Erro ao obter coordenadas para CEP {c.cep}")
@@ -172,7 +175,7 @@ def load_concessionarias(path):
     return concessionarias, concessionarias_invalidas
 
 def load_pedidos(path):
-    df = pd.read_excel(path)
+    df = pd.read_excel(path, sheet_name='pedidos')
 
     pedidos = []
 
@@ -185,7 +188,6 @@ def load_pedidos(path):
         pedidos.append(p)
 
     return pedidos
-
 
 # 4. criar nós para cada pedido
 

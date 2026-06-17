@@ -5,6 +5,109 @@ from master.master_model import MasterModel
 from pricing.pricing import pricing
 from gurobipy import GRB
 
+
+def run_model(conc_path, ped_path, Q, Y, K):
+
+    instance = load_instance(
+        conc_path,
+        ped_path,
+        depot_lat=-19.9,
+        depot_lon=-44.1,
+        Q=Q,
+        Y=Y,
+        K=K
+    )
+
+    columns = Column.create_initial_routes(instance)
+    master = MasterModel(instance, columns)
+    master.build_model()
+
+    iteration = 0
+
+    # =========================
+    # COLUMN GENERATION
+    # =========================
+    while True:
+        master.solve()
+
+        if master.model.Status != 2:
+            break
+
+        duals = master.get_duals()
+        new_columns = pricing(instance, duals)
+
+        if not new_columns:
+            break
+
+        for col in new_columns:
+            columns.append(col)
+            r = len(columns) - 1
+
+            new_var = master.model.addVar(
+                vtype=GRB.CONTINUOUS,
+                lb=0.0,
+                ub=1.0,
+                obj=col.cost,
+                name=f"lambda_{r}"
+            )
+
+            master.lambda_vars[r] = new_var
+
+            for node_id in col.route:
+                if node_id == 0:
+                    continue
+                constr = master.model.getConstrByName(f"cover_{node_id}")
+                if constr:
+                    master.model.chgCoeff(constr, new_var, 1.0)
+
+            vehicle_constr = master.model.getConstrByName("vehicle_limit")
+            if vehicle_constr:
+                master.model.chgCoeff(vehicle_constr, new_var, 1.0)
+
+        master.model.update()
+        iteration += 1
+
+    # =========================
+    # FASE INTEIRA (FINAL)
+    # =========================
+    custo = None
+    rotas_escolhidas = []
+
+    if master.model.Status == 2:
+
+        # converter variáveis para binárias
+        for var in master.lambda_vars.values():
+            var.vtype = GRB.BINARY
+
+        # remover folgas (Big-M)
+        for slack_var in master.slack_vars.values():
+            slack_var.ub = 0.0
+
+        master.model.update()
+
+        master.model.optimize()
+
+        if master.model.Status == GRB.OPTIMAL:
+
+            custo = master.model.ObjVal
+
+            for r, var in master.lambda_vars.items():
+                if var.X > 0.5:
+                    rota = columns[r].route
+                    rotas_escolhidas.append(rota)
+
+    # =========================
+    # RETORNO FINAL
+    # =========================
+    return {
+        "colunas": len(columns),
+        "iteracoes": iteration,
+        "status": master.model.Status,
+        "custo": custo,
+        "rotas": rotas_escolhidas
+    }
+
+
 def main():
 
     # ----------------------
